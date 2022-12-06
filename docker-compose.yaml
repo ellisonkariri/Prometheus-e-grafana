@@ -1,0 +1,62 @@
+version: '3.4'
+services:
+  pedelogo.catalogo.api:
+    image: ellisonalenar/pedelogo-catalogo:latest
+    ports:
+      - 8080:80
+    environment:
+      Mongo__Host: mongodb
+      Mongo__User: mongouser 
+      Mongo__Password: mongopwd 
+      Mongo__Port: 27017
+      Mongo_DataBase: admin 
+    depends_on:
+      - mongodb
+    networks:
+      - pedelogo_network
+  
+  mongodb:
+    image: mongo:4.2.8
+    networks:
+      - pedelogo_network
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongouser 
+      MONGO_INITDB_ROOT_PASSWORD: mongopwd 
+  
+  mongodbexporter:
+    image: ellisonalenar/mongo_exporter
+    ports:
+      - "9216:9216"
+    depends_on:
+      - mongodb
+    environment:
+      MONGODB_URI: "mongodb://mongouser:mongopwd@mongodb:2701"
+    networks:
+      - pedelogo_network
+
+  prometheus:
+    image: prom/prometheus:v2.22.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+      - ./alert-rules.yaml:/etc/prometheus/alert-rules.rules
+    depends_on:
+      - pedelogo.catalogo.api
+      - mongodbexporter
+    networks:
+      - pedelogo_network
+
+  grafana:
+    image: grafana/grafana:7.3.3
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - pedelogo_network
+  
+
+networks:
+  pedelogo_network:
+    driver: bridge 
